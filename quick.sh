@@ -29,7 +29,7 @@ __parse_repo_json_python() {
 
   # Using latest, grab the right
   # version from the repo.json
-  _JSON_VERSION=$(python - <<-EOF
+  _JSON_VERSION=$(python3 - <<-EOF
 import json, urllib.request
 url = "https://repo.saltproject.io/salt/py3/onedir/repo.json"
 response = urllib.request.urlopen(url)
