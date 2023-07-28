@@ -72,10 +72,12 @@ __gather_os_info() {
 __gather_os_info
 
 if [[ "${OS_NAME_L}" == "darwin" ]]; then
-  OS_NAME_L="macos"
+  OS_NAME="macos"
+else
+  OS_NAME="${OS_NAME_L}"
 fi
 
-__parse_repo_json_jq ${OS_NAME_L} ${CPU_ARCH_L}
+__parse_repo_json_jq ${OS_NAME} ${CPU_ARCH_L}
 
 FILE="salt-${_JSON_VERSION}-onedir-${OS_NAME_L}-${CPU_ARCH_L}.tar.xz"
 URL="${SALT_REPO_URL}/latest/${FILE}"
