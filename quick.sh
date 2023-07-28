@@ -1,3 +1,7 @@
+#!/bin/sh
+
+SALT_REPO_URL="https://repo.saltproject.io/salt/py3/onedir"
+
 _COLORS=${QS_COLORS:-$(tput colors 2>/dev/null || echo 0)}
 __detect_color_support() {
     # shellcheck disable=SC2181
@@ -25,19 +29,9 @@ echoerror() {
     printf "${RC} * ERROR${EC}: %s\\n" "$@" 1>&2;
 }
 
-__parse_repo_json_python() {
-
-  # Using latest, grab the right
-  # version from the repo.json
-  _JSON_VERSION=$(python3 - <<-EOF
-import json, urllib.request
-url = "https://repo.saltproject.io/salt/py3/onedir/repo.json"
-response = urllib.request.urlopen(url)
-data = json.loads(response.read())
-version = data["latest"][list(data["latest"])[0]]['version']
-print(version)
-EOF
-)
+__parse_repo_json_jq() {
+  _JSON_FILE="${SALT_REPO_URL}/repo.json"
+  _JSON_VERSION=$(curl -s ${JSON_FILE} | jq -sr ".[].latest[] | select(.os == \"$1\") | select(.arch == \"$2\").version")
 }
 
 __fetch_url() {
@@ -77,10 +71,14 @@ __gather_os_info() {
 }
 __gather_os_info
 
-__parse_repo_json_python
+if [[ "${OS_NAME_L}" == "darwin" ]]; then
+  OS_NAME_L="macos"
+fi
+
+__parse_repo_json_jq ${OS_NAME_L} ${CPU_ARCH_L}
 
 FILE="salt-${_JSON_VERSION}-onedir-${OS_NAME_L}-${CPU_ARCH_L}.tar.xz"
-URL="https://repo.saltproject.io/salt/py3/onedir/latest/${FILE}"
+URL="${SALT_REPO_URL}/latest/${FILE}"
 
 echoinfo "Downloading Salt"
 __fetch_url "${FILE}" "${URL}"
