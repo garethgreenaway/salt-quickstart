@@ -31,7 +31,7 @@ echoerror() {
 
 __parse_repo_json_jq() {
   _JSON_FILE="${SALT_REPO_URL}/repo.json"
-  _JSON_VERSION=$(curl -s ${JSON_FILE} | jq -sr ".[].latest[] | select(.os == \"$1\") | select(.arch == \"$2\").version")
+  _JSON_VERSION=$(curl -s ${_JSON_FILE} | jq -sr ".[].latest[] | select(.os == \"$1\") | select(.arch == \"$2\").version")
 }
 
 __fetch_url() {
