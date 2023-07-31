@@ -125,8 +125,10 @@ if ( $saltFileName -and $saltVersion -and $saltSha512 ) {
     }
 }
 
+Write-Host "Download Salt"
 Invoke-WebRequest -Uri $saltFileUrl -OutFile .\salt.zip
 
+Write-Host "Extracting Salt"
 Expand-ZipFile -ZipFile .\salt.zip -Destination .
 
 $PATH = $(Get-Location).Path
@@ -142,10 +144,10 @@ salt-call:
 
 Set-Content -Path .\salt\Saltfile -Value $saltfile_contents
 
-New-Item -Path "$PATH\salt\var\log\salt" -Type Directory
-New-Item -Path "$PATH\salt\conf" -Type Directory
-New-Item -Path "$PATH\salt\var\cache\salt" -Type Directory
-New-Item -Path "$PATH\salt\srv\salt" -Type Directory
+New-Item -Path "$PATH\salt\var\log\salt" -Type Directory | Out-Null
+New-Item -Path "$PATH\salt\conf" -Type Directory | Out-Null
+New-Item -Path "$PATH\salt\var\cache\salt" -Type Directory | Out-Null
+New-Item -Path "$PATH\salt\srv\salt" -Type Directory | Out-Null
 
 Write-Host "Adding $PATH\salt to PATH"
 $env:Path = "$PATH\salt;" + $env:Path
