@@ -144,10 +144,10 @@ salt-call:
 
 Set-Content -Path .\salt\Saltfile -Value $saltfile_contents
 
-New-Item -Path "$PATH\salt\var\log\salt" -Type Directory | Out-Null
-New-Item -Path "$PATH\salt\conf" -Type Directory | Out-Null
-New-Item -Path "$PATH\salt\var\cache\salt" -Type Directory | Out-Null
-New-Item -Path "$PATH\salt\srv\salt" -Type Directory | Out-Null
+New-Item -Path "$PATH\salt\var\log\salt" -Type Directory -Force | Out-Null
+New-Item -Path "$PATH\salt\conf" -Type Directory -Force | Out-Null
+New-Item -Path "$PATH\salt\var\cache\salt" -Type Directory -Force | Out-Null
+New-Item -Path "$PATH\salt\srv\salt" -Type Directory -Force | Out-Null
 
 Write-Host "Adding $PATH\salt to PATH"
 $env:Path = "$PATH\salt;" + $env:Path
