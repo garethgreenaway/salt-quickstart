@@ -1,8 +1,40 @@
 #!/bin/sh
 
+__ScriptName="quick.sh"
 SALT_REPO_URL="https://repo.saltproject.io/salt/py3/onedir"
-
 _COLORS=${QS_COLORS:-$(tput colors 2>/dev/null || echo 0)}
+
+_LOCAL=0
+_FULL=0
+_STOP=0
+
+PWD="$(pwd)"
+_PATH=${PWD}/salt
+
+
+__usage() {
+    cat << EOT
+
+  Usage :  ${__ScriptName} [options]
+
+  Options:
+    -h  Show usage.
+    -f  Full setup with a Salt minion and Salt master running.
+    -l  Local setup, no Salt minion or Salt master running.
+    -s  Attempt to stop a running Salt minion and Salt master.
+
+EOT
+}   # ----------  end of function __usage  ----------
+
+
+echoinfo() {
+    printf "${GC} *  INFO${EC}: %s\\n" "$@";
+}
+
+echoerror() {
+    printf "${RC} * ERROR${EC}: %s\\n" "$@" 1>&2;
+}
+
 __detect_color_support() {
     # shellcheck disable=SC2181
     if [ $? -eq 0 ] && [ "$_COLORS" -gt 2 ]; then
@@ -19,15 +51,42 @@ __detect_color_support() {
         EC=""
     fi
 }
+
 __detect_color_support
 
-echoinfo() {
-    printf "${GC} *  INFO${EC}: %s\\n" "$@";
-}
+while getopts ':fhls' opt
+do
+  case "${opt}" in
 
-echoerror() {
-    printf "${RC} * ERROR${EC}: %s\\n" "$@" 1>&2;
-}
+    h )  __usage; exit 0  ;;
+    l )  _LOCAL=1         ;;
+    f )  _FULL=1          ;;
+    s )  _STOP=1          ;;
+
+  esac    # --- end of case ---
+done
+shift $((OPTIND-1))
+
+if [[ "${_STOP}" == "1" ]]; then
+  if [[ -f "${_PATH}/var/run/salt-minion.pid" ]]; then
+    echoinfo "Stopping the salt-minion"
+    kill $(cat "${_PATH}/var/run/salt-minion.pid")
+  else
+    echoerror "${_PATH}/var/run/salt-minion.pid not found"
+  fi
+  if [[ -f "${_PATH}/var/run/salt-master.pid" ]]; then
+    echoinfo "Stopping the salt-master"
+    kill $(cat "${_PATH}/var/run/salt-master.pid")
+  else
+    echoerror "${_PATH}/var/run/salt-master.pid not found"
+  fi
+  exit 0
+fi
+
+if [[ "$_LOCAL" == "1" && "$_FULL" == "1" ]]; then
+  echo "Only specify either local or full"
+  exit 0
+fi
 
 __parse_repo_json_jq() {
   _JSON_FILE="${SALT_REPO_URL}/repo.json"
@@ -42,6 +101,14 @@ __fetch_url() {
                 fetch -q -o "$1" "$2" >/dev/null 2>&1          ||  # Pre FreeBSD 10
                     ftp -o "$1" "$2" >/dev/null 2>&1           ||  # OpenBSD
                         (echoerror "$2 failed to download to $1"; exit 1)
+}
+
+__gather_os_info() {
+    OS_NAME=$(uname -s 2>/dev/null)
+    OS_NAME_L=$( echo "$OS_NAME" | tr '[:upper:]' '[:lower:]' )
+    OS_VERSION=$(uname -r)
+    # shellcheck disable=SC2034
+    OS_VERSION_L=$( echo "$OS_VERSION" | tr '[:upper:]' '[:lower:]' )
 }
 
 __gather_hardware_info() {
@@ -60,15 +127,8 @@ __gather_hardware_info() {
     CPU_ARCH=$(uname -m 2>/dev/null || uname -p 2>/dev/null || echo "unknown")
     CPU_ARCH_L=$( echo "$CPU_ARCH" | tr '[:upper:]' '[:lower:]' )
 }
-__gather_hardware_info
 
-__gather_os_info() {
-    OS_NAME=$(uname -s 2>/dev/null)
-    OS_NAME_L=$( echo "$OS_NAME" | tr '[:upper:]' '[:lower:]' )
-    OS_VERSION=$(uname -r)
-    # shellcheck disable=SC2034
-    OS_VERSION_L=$( echo "$OS_VERSION" | tr '[:upper:]' '[:lower:]' )
-}
+__gather_hardware_info
 __gather_os_info
 
 if [[ "${OS_NAME_L}" == "darwin" ]]; then
@@ -86,16 +146,27 @@ __parse_repo_json_jq ${OS_NAME} ${CPU_ARCH_L}
 FILE="salt-${_JSON_VERSION}-onedir-${OS_NAME_L}-${CPU_ARCH_L}.tar.xz"
 URL="${SALT_REPO_URL}/latest/${FILE}"
 
-echoinfo "Downloading Salt"
-__fetch_url "${FILE}" "${URL}"
+if [[ ! -f ${FILE} ]]; then
+  echoinfo "Downloading Salt"
+  __fetch_url "${FILE}" "${URL}"
+fi
 
-echoinfo "Extracting Salt"
-tar xf ${FILE}
+if [[ ! -d "salt" ]]; then
+  echoinfo "Extracting Salt"
+  tar xf ${FILE}
+fi
 
-PWD="$(pwd)"
-_PATH=${PWD}/salt
-
+mkdir -p ${_PATH}/etc/salt
 mkdir -p ${_PATH}/srv/salt
+
+cat <<EOT >${_PATH}/etc/salt/master
+root_dir: ${_PATH}
+EOT
+
+cat <<EOT >${_PATH}/etc/salt/minion
+root_dir: ${_PATH}
+master: 127.0.0.1
+EOT
 
 cat <<EOT >${_PATH}/Saltfile
 salt-call:
@@ -104,6 +175,20 @@ salt-call:
   log_file: ${_PATH}/var/log/salt/minion
   cachedir: ${_PATH}/var/cache/salt
   file_root: ${_PATH}/srv/salt
+
+salt-master:
+  config_dir: ${_PATH}/etc/salt
+  file_root: ${_PATH}/srv/salt
+
+salt-minion:
+  config_dir: ${_PATH}/etc/salt
+  file_root: ${_PATH}/srv/salt
+
+salt-key:
+  config_dir: ${_PATH}/etc/salt
+
+salt:
+  config_dir: ${_PATH}/etc/salt
 EOT
 
 PATH_MSG="export PATH=${_PATH}"
@@ -114,4 +199,16 @@ echoinfo "Add Salt to current path"
 echoinfo "  ${PATH_MSG}"
 echoinfo "Use the provided Saltfile"
 echoinfo "  export SALT_SALTFILE=${_PATH}/Saltfile"
+
 echoinfo "Create Salt states in ${_PATH}/srv/salt"
+
+if [[ "${_FULL}" == "1" ]]; then
+
+  export PATH=${_PATH}:$PATH
+  echoinfo "Starting salt-master"
+  salt-master -d
+  sleep 5
+  echoinfo "Starting salt-minion"
+  salt-minion -d
+
+fi
