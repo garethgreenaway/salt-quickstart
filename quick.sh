@@ -161,11 +161,13 @@ mkdir -p ${_PATH}/srv/salt
 
 cat <<EOT >${_PATH}/etc/salt/master
 root_dir: ${_PATH}
+file_root: ${_PATH}/srv/salt
 EOT
 
 cat <<EOT >${_PATH}/etc/salt/minion
 root_dir: ${_PATH}
 master: 127.0.0.1
+id: minion
 EOT
 
 cat <<EOT >${_PATH}/Saltfile
@@ -204,11 +206,15 @@ echoinfo "Create Salt states in ${_PATH}/srv/salt"
 
 if [[ "${_FULL}" == "1" ]]; then
 
-  export PATH=${_PATH}:$PATH
+  export PATH="${_PATH}:$PATH"
+  export SALT_SALTFILE="${_PATH}/Saltfile"
   echoinfo "Starting salt-master"
-  salt-master -d
+  salt-master -d -c ${_PATH}/etc/salt
   sleep 5
   echoinfo "Starting salt-minion"
-  salt-minion -d
+  salt-minion -d -c ${_PATH}/etc/salt
+
+echoinfo "Run salt-key -L to see pending minion keys"
+echoinfo "Run salt-key -a minion to accept the pending minion key"
 
 fi
