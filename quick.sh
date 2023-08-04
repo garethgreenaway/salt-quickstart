@@ -162,6 +162,8 @@ if [[ ! -d "salt" ]]; then
     mkdir -p ${_PATH}/opt/openssl/lib
     ln -s ${_PATH}/lib/libcrypto.dylib ${_PATH}/opt/openssl/lib/libcrypto.dylib
   fi
+else
+  echoinfo "A salt directory already exists here, not extracting."
 fi
 
 mkdir -p ${_PATH}/etc/salt
