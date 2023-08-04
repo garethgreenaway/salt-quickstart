@@ -135,7 +135,7 @@ _DARWIN_ARM=0
 if [[ "${OS_NAME_L}" == "darwin" ]]; then
   OS_NAME="macos"
   # Use x86_64 packages until we are able build arm packages
-  if [[ ${CPU_ARCH_L}] == "arm64" ]]; then
+  if [[ "${CPU_ARCH_L}" == "arm64" ]]; then
     CPU_ARCH_L="x86_64"
     _DARWIN_ARM=1
   fi
