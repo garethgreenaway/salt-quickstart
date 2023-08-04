@@ -131,11 +131,13 @@ __gather_hardware_info() {
 __gather_hardware_info
 __gather_os_info
 
+_DARWIN_ARM=0
 if [[ "${OS_NAME_L}" == "darwin" ]]; then
   OS_NAME="macos"
   # Use x86_64 packages until we are able build arm packages
   if [[ ${CPU_ARCH_L}] == "arm64" ]]; then
     CPU_ARCH_L="x86_64"
+    _DARWIN_ARM=1
   fi
 else
   OS_NAME="${OS_NAME_L}"
@@ -154,6 +156,12 @@ fi
 if [[ ! -d "salt" ]]; then
   echoinfo "Extracting Salt"
   tar xf ${FILE}
+
+  # very very hacky, remove ASAP
+  if [[ "${_DARWIN_ARM}" == "1" ]]; then
+    mkdir -p ${_PATH}/opt/openssl/lib
+    ln -s ${_PATH}/lib/libcrypto.dylib ${_PATH}/opt/openssl/lib/libcrypto.dylib
+  fi
 fi
 
 mkdir -p ${_PATH}/etc/salt
@@ -201,6 +209,11 @@ echoinfo "Add Salt to current path"
 echoinfo "  ${PATH_MSG}"
 echoinfo "Use the provided Saltfile"
 echoinfo "  export SALT_SALTFILE=${_PATH}/Saltfile"
+# very very hacky, remove ASAP
+if [[ "${_DARWIN_ARM}" == "1" ]]; then
+  echoinfo "Setup HOMEBREW"
+  echoinfo "  export HOMEBREW_PREFIX=${_PATH}"
+fi
 
 echoinfo "Create Salt states in ${_PATH}/srv/salt"
 
@@ -208,6 +221,10 @@ if [[ "${_FULL}" == "1" ]]; then
 
   export PATH="${_PATH}:$PATH"
   export SALT_SALTFILE="${_PATH}/Saltfile"
+  # very very hacky, remove ASAP
+  if [[ "${_DARWIN_ARM}" == "1" ]]; then
+    export HOMEBREW_PREFIX=${_PATH}
+  fi
   echoinfo "Starting salt-master"
   salt-master -d -c ${_PATH}/etc/salt
   sleep 5
