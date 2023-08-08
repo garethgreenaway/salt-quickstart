@@ -84,6 +84,10 @@ function Expand-ZipFile {
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Tls12'
 
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
+$ProgressPreference = 'SilentlyContinue'
+
 $RepoUrl = "https://repo.saltproject.io/salt/py3/onedir"
 
 if ([IntPtr]::Size -eq 4) {
